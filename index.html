@@ -831,6 +831,13 @@ table.pgrid td.today{background:color-mix(in srgb,var(--orange-soft) 45%,transpa
 table.pgrid tr.tot td{font-weight:700;text-align:center;font-size:13px;padding:8px}
 .tgrid{grid-template-columns:repeat(auto-fill,minmax(330px,1fr))}
 .tpair .box .v{font-size:17px}.tpair .boxrow{gap:4px}.tpair .boxrow>button:last-child{padding:0 8px;min-width:48px}
+/* 하비랑 정렬 정리 */
+button.runl{width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer}
+button.runl:hover{border-color:var(--orange-line)}
+.week .btn.add-row{margin-top:8px;height:44px}
+.btn.add-row small{font-weight:400;color:var(--muted);margin-left:4px}
+.run-head .icon-btn{flex:none}
+.site-seg button{min-width:0}
 
 </style>
 </head>
@@ -2138,6 +2145,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
   function addItem(kind, onOk) {
     if (kind === 'ccpProduct') return openProductCcp(null, p => onOk(p.name));
+    if (kind && kind.startsWith('opt:')) { const k = kind.slice(4); return openText(`${OPT_NAMES[k] || '항목'} 추가`, '', async v => { v = (v || '').trim(); if (v && (listOf(k).includes(v) || await saveList(k, [...listOf(k), v]))) onOk(v); }); }
     if (kind === 'client') return openText('거래처 추가', '', async v => { if (v && await addToConfig('clients', v)) onOk(v); }, '예: 참푸드팜');
     if (kind === 'material') return openText('세척 원료 추가', '', async v => { if (v && await addToConfig('materials', v)) onOk(v); }, '예: 대파');
     if (kind === 'origin') return openText('원산지 추가', '', async v => { if (v && await addToConfig('origins', v)) onOk(v); }, '예: 칠레산');
@@ -2518,10 +2526,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   const ST_LABEL = { done: '입력됨', dev: '이탈', todo: '입력 전', wait: '앞 공정 대기' };
   const procChip = (r, p, btn) => { const s = procState(r, p); if (s === 'none') return ''; const t = `${PC(p).short} · ${ST_LABEL[s]}`;
     return btn ? `<button class="pchip ${s}" data-act="cGoSite" data-id="${esc(r.id)}" data-p="${p}" title="${esc(t)}">${s === 'done' ? icon('check') : s === 'dev' ? icon('alert') : ''}${PC(p).short}</button>` : `<span class="pchip ${s}" title="${esc(t)}">${s === 'done' ? icon('check') : s === 'dev' ? icon('alert') : ''}${PC(p).short}</span>`; };
-  const runLine = (r, o = {}) => `<div class="runl${runDone(r) ? ' ok' : ''}" ${o.click ? `data-act="${o.click}" data-id="${esc(r.id)}" role="button" tabindex="0"` : ''}>
+  const runLine = (r, o = {}) => `<${o.click ? 'button type="button"' : 'div'} class="runl${runDone(r) ? ' ok' : ''}" ${o.click ? `data-act="${o.click}" data-id="${esc(r.id)}"` : ''}>
       <span class="sq">${r.seq || '-'}</span>
-      <div class="tx"><b>${heatMark(r)} ${esc(r.product)}</b><small>${esc(r.client || '')}${r.spec ? ` · ${esc(r.spec)}` : ''}${r.planKg != null ? ` · ${kg(r.planKg)}kg` : ''}${r.planCount != null ? ` · ${fmt(r.planCount)}ea` : ''}${r.note ? ` · ${esc(r.note)}` : ''}</small></div>
-      <div class="pcs">${CPROCS().map(p => procChip(r, p.id, o.btn)).join('')}</div></div>`;
+      <span class="tx"><b>${heatMark(r)} ${esc(r.product)}</b><small>${esc(r.client || '')}${r.spec ? ` · ${esc(r.spec)}` : ''}${r.planKg != null ? ` · ${kg(r.planKg)}kg` : ''}${r.planCount != null ? ` · ${fmt(r.planCount)}ea` : ''}${r.note ? ` · ${esc(r.note)}` : ''}</small></span>
+      <span class="pcs">${CPROCS().map(p => procChip(r, p.id, o.btn)).join('')}</span></${o.click ? 'button' : 'div'}>`;
   const daySum = rs => CPROCS().map(p => { const n = rs.filter(r => (r.procs || []).includes(p.id)).length; return n ? `${p.short} ${n}` : ''; }).filter(Boolean).join(' · ');
 
   // ===== 현황 =====
@@ -2560,7 +2568,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       <div class="week">${days.map(d => { const rs = runsOn(d);
         return `<section class="card day${d === today() ? ' today' : ''}"><div class="card-h"><h2>${+d.slice(5, 7)}/${+d.slice(8, 10)} <small>${dow(d)}</small></h2><span class="sp"></span><small>${daySum(rs) || '계획 없음'}</small></div>
           <div class="runs">${rs.map(r => runLine(r, { click: 'cEditRun' })).join('')}</div>
-          <button class="add" data-act="cAddRun" data-d="${d}">${icon('plus')}생산 추가</button></section>`; }).join('')}</div>`;
+          <button type="button" class="btn add-row" data-act="cAddRun" data-d="${d}">${icon('plus')}생산 추가</button></section>`; }).join('')}</div>`;
   }
   Object.assign(ACTS, {
     cWeek: b => { const n = +b.dataset.n; CP().week = n ? addDays(CP().week, n) : mondayOf(today()); paint(); },
@@ -2711,7 +2719,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     (x.issues || []).forEach((s, i) => { F[`iss${i}_d`] = s.d || ''; F[`iss${i}_a`] = s.a || ''; F[`iss${i}_p`] = s.p || ''; });
     if (p === 'wash') {
       F.rows = (x.rows && x.rows.length ? x.rows : [{}, {}, {}]).map(w => ({ mat: w.mat || null, kg: w.kg ?? null, ppm: w.ppm ?? null, s: w.s || null, e: w.e || null, cl: w.cl ?? null, _orig: x.rows ? clone(w) : null }));
-      F._cols = [C.pick('mat', '원료명', () => state.config.materials, { add: 'material', w: 150 }), C.num('kg', '세척량', 'kg', { w: 90 }), C.num('ppm', '세척액 농도', 'ppm', { w: 100, req: 1 }),
+      F._cols = [C.ro('no', 'No', (w, i) => `<span class="cv">${i + 1}</span>`, { w: 52 }), C.pick('mat', '원료명', () => state.config.materials, { add: 'material', w: 150 }), C.num('kg', '세척량', 'kg', { w: 90 }), C.num('ppm', '세척액 농도', 'ppm', { w: 100, req: 1 }),
         C.time('s', '침지 시작', { w: 86 }), C.time('e', '침지 종료', { w: 86 }), C.num('cl', '잔류염소 농도', 'ppm', { w: 100 }),
         C.ro('dur', '침지', w => { const d = minsBetween(w.s, w.e); return d == null ? '-' : `<b class="${outOf(limOf('soak', F_().prod), d) ? 'bad' : 'yl'}">${d}분</b>`; }, { w: 60 })];
       F._title = (w, i) => `원료 ${i + 1}`;
@@ -2748,7 +2756,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function formWash(F) {
     return `<section class="card"><div class="card-h"><h2>${esc(PC('wash').label)} <small>${esc(PC('wash').ccp)}</small></h2></div>${limBar('wash', F.prod)}
       ${sheetTable(F._cols, F.rows, { acts: (w, i) => F.rows.length > 1 ? `<button class="icon-btn" data-act="cRowDel" data-i="${i}" aria-label="줄 지우기">${icon('x')}</button>` : '' })}
-      ${F.rows.length < 10 ? `<button class="add" data-act="cRowAdd">${icon('plus')}원료 한 줄 추가 <small>(최대 10줄)</small></button>` : ''}</section>`;
+      ${F.rows.length < 10 ? `<button type="button" class="btn add-row" data-act="cRowAdd">${icon('plus')}원료 한 줄 추가 <small>(최대 10줄)</small></button>` : ''}</section>`;
   }
   function formHeat(F) {
     const hold = minsBetween(F.reach85, F.heatE), lh = limOf('heatProd', F.prod) || {};
@@ -2768,7 +2776,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const yA = packYieldAuto(F), md = i => `<tr><th>${MD_ROWS[i]}</th><td>${mdTime(i)}</td>${[0, 1, 2].map(j => mdCell(i, `fe${j}`)).join('')}${[0, 1, 2].map(j => mdCell(i, `sus${j}`)).join('')}
       ${i === 0 || i === 6 ? '<td colspan="5" class="na">해당사항 없음</td>' : [0, 1].map(j => mdCell(i, `pfe${j}`)).join('') + [0, 1].map(j => mdCell(i, `psus${j}`)).join('') + mdCell(i, 'prod')}</tr>`;
     return `<section class="card"><div class="card-h"><h2>${esc(PC('pack').label)} <small>${esc(PC('pack').site)} · 일일생산물품표</small></h2></div>${limBar('pack', F.prod)}
-      <div class="fields c4">${pkText('spec', '포장규격')}<div class="fld">${pkText('outer', '외포장재')}${OPT('outers').length ? chips('outer', OPT('outers')) : ''}</div><div class="fld">${pkText('inner', '내포장재')}${OPT('inners').length ? chips('inner', OPT('inners')) : ''}</div><div class="fld"><span class="fl">보관방법</span>${chips('storage', OPT('storage'))}</div></div>
+      <div class="fields c4">${pkText('spec', '포장규격')}${pkPick('outer', '외포장재', 'outers')}${pkPick('inner', '내포장재', 'inners')}<div class="fld"><span class="fl">보관방법</span>${chips('storage', OPT('storage'))}</div></div>
       <div class="fields c4"><div class="fld"><span class="fl">라벨검수</span>${chips('label', OPT('check'))}</div><div class="fld"><span class="fl">관능평가</span>${chips('sensory', OPT('check'))}</div><div class="fld w2"><span class="fl">충진기 구분</span>${chips('filler', OPT('filler'))}</div></div>
       <div class="tgrid"><div class="tpair"><span class="fl">포장 시간</span><div class="boxrow2">${pkTime('packS', '시작')}${pkTime('packE', '종료')}</div></div>
         <div class="tpair"><span class="fl">포장 온도</span><div class="boxrow2">${pkNum('tempS', '시작', '℃')}${pkNum('tempE', '종료', '℃')}</div></div></div>
@@ -3175,6 +3183,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     cHomeWeek: b => { const n = +b.dataset.n; CP().homeWeek = n ? addDays(CP().homeWeek || mondayOf(CP().date), n) : mondayOf(today()); paint(); },
     cHomeDay: b => { CP().date = b.dataset.d; paint(); },
   });
+  // 목록에서 고르는 칸 (포장재 등) — 목록에 없으면 바로 추가
+  const pkPick = (k, label, list, o = {}) => { const v = F_()[k]; return fieldWrap(label, o, `<button type="button" class="box${miss(k)}" data-act="cPickF" data-k="${k}" data-list="${list}" data-label="${esc(label)}"><span class="v ${v ? '' : 'ph'}" style="font-size:16px">${v ? esc(v) : '고르기'}</span>${icon('chevD')}</button>`); };
+  ACTS.cPickF = b => openPick({ anchor: b, label: b.dataset.label, items: listOf(b.dataset.list), value: F_()[b.dataset.k], add: 'opt:' + b.dataset.list, onOk: v => setF(b.dataset.k, v || '') });
 
   // ================= 기록 =================
   function pageRecs() {
